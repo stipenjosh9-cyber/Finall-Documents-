@@ -13,7 +13,7 @@ const renderTextWithBold = (text: string) => {
   const parts = text.split(/(\*\*.*?\*\*)/g);
   return parts.map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <span key={index} className="font-bold">{part.slice(2, -2)}</span>;
+      return <span key={index} className="font-bold text-black">{part.slice(2, -2)}</span>;
     }
     return <span key={index}>{part}</span>;
   });
@@ -21,7 +21,7 @@ const renderTextWithBold = (text: string) => {
 
 // --- DYNAMIC UNIVERSITY LOGO COMPONENT ---
 const UniversityLogo = ({ id, color, name }: { id: string, color: string, name: string }) => {
-  const svgClass = "w-full h-full drop-shadow-sm";
+  const svgClass = "w-full h-full";
 
   // Check if we have a specific SVG for this ID
   switch (id) {
@@ -125,7 +125,7 @@ const LetterPreview = forwardRef<HTMLDivElement, LetterPreviewProps>(({ data }, 
   const uni = universities.find(u => u.id === data.universityId) || universities[0]; 
 
   if (data.customFields && data.customFields.length > 0) {
-      return null; // Removed AI custom fields view
+      return null;
   }
 
   return (
@@ -136,27 +136,30 @@ const LetterPreview = forwardRef<HTMLDivElement, LetterPreviewProps>(({ data }, 
         style={{
           width: '210mm',
           height: '297mm',
-          padding: '15mm 25mm 15mm 25mm', 
+          padding: '12mm 20mm 15mm 20mm', // Adjusted padding to prevent cropping
           boxSizing: 'border-box',
-          lineHeight: '1.6', 
+          lineHeight: '1.5', 
           fontSmooth: 'always',
           WebkitFontSmoothing: 'antialiased',
           fontFamily: '"Times New Roman", Times, serif'
         }}
       >
-        <div className="flex flex-row items-start justify-between mb-6">
-            <div className="w-[32mm] h-[38mm] flex-shrink-0 mt-1">
+        {/* HEADER SECTION - Matching Screenshot Exact Layout */}
+        <div className="flex flex-row items-start justify-between mb-4">
+            {/* Logo Left */}
+            <div className="w-[30mm] h-[35mm] flex-shrink-0 mt-2">
                 <UniversityLogo id={uni.id} color={uni.color} name={uni.name} />
             </div>
 
-            <div className="flex-1 text-right pt-2">
-                <h1 className="font-bold text-[24pt] uppercase tracking-wide leading-none font-serif" style={{ color: uni.color }}>
-                    {uni.name}
+            {/* University Details Right */}
+            <div className="flex-1 flex flex-col items-end text-right pt-2">
+                <h1 className="font-bold text-[28pt] tracking-tight leading-none font-serif text-[#002147]" style={{ color: uni.color }}>
+                    {uni.name.toUpperCase()}
                 </h1>
-                <div className="text-[10pt] font-sans font-bold uppercase tracking-[0.2em] text-gray-500 mt-2 mb-2">
+                <div className="text-[11pt] font-sans tracking-[0.15em] text-gray-600 mt-2 mb-1">
                     {uni.department.toUpperCase()}
                 </div>
-                <div className="text-[9pt] font-serif text-gray-500 leading-tight">
+                <div className="text-[9.5pt] font-serif text-gray-500 leading-tight">
                     {uni.address.slice(0, 3).map((line, i) => (
                         <div key={i}>{line}</div>
                     ))}
@@ -164,9 +167,11 @@ const LetterPreview = forwardRef<HTMLDivElement, LetterPreviewProps>(({ data }, 
             </div>
         </div>
 
-        <div className="w-full border-t-[2.5px] mb-6" style={{ borderColor: uni.color }}></div>
+        {/* Separator Line */}
+        <div className="w-full h-[2px] mb-8" style={{ backgroundColor: uni.color }}></div>
 
-        <div className="flex justify-between items-start mb-10 px-1">
+        {/* Meta Data Row */}
+        <div className="flex justify-between items-start mb-10">
             <div className="space-y-1">
                 <div className="text-[8pt] font-sans font-bold text-gray-500 uppercase tracking-widest">{uni.labels.ref || "DOCUMENT REFERENCE"}</div>
                 <div className="text-[12pt] font-serif text-black">{uni.refFormat}2024/STU-{Math.floor(Math.random() * 89999 + 10000)}</div>
@@ -177,22 +182,26 @@ const LetterPreview = forwardRef<HTMLDivElement, LetterPreviewProps>(({ data }, 
             </div>
         </div>
 
-        <div className="mb-8 text-center">
-            <h2 className="text-[16pt] font-serif font-bold uppercase tracking-wider text-black underline decoration-[1.5px] underline-offset-[6px]">
+        {/* Title */}
+        <div className="mb-10 text-center">
+            <h2 className="text-[18pt] font-serif font-bold uppercase tracking-wider text-black underline decoration-[1.5px] underline-offset-[4px]">
                 {uni.docTitle}
             </h2>
         </div>
 
-        <div className="mb-4 font-serif text-[12pt] font-bold text-black uppercase">
-            {uni.body.salutation.replace(',', '')},
+        {/* Salutation */}
+        <div className="mb-6 font-serif text-[12pt] font-bold text-black uppercase tracking-wide">
+            {uni.body.salutation}
         </div>
 
-        <div className="mb-6 font-serif text-[12pt] leading-[1.8] text-justify text-gray-900">
+        {/* Intro Paragraph */}
+        <div className="mb-6 font-serif text-[12pt] leading-[1.6] text-justify text-gray-900">
             {renderTextWithBold(uni.body.intro(data.studentName, data.fatherName))}
         </div>
 
-        <div className="bg-[#F8F9FA] p-6 mb-6 border-l-0">
-            <div className="grid grid-cols-[180px_1fr] gap-y-4 items-center font-serif">
+        {/* Data Box - Gray Background with Blue Left Border */}
+        <div className="bg-[#F8F9FA] py-5 px-6 mb-8 border-l-[5px]" style={{ borderColor: uni.color }}>
+            <div className="grid grid-cols-[160px_1fr] gap-y-3 items-center font-serif">
                 <div className="font-bold text-[#374151] text-[11pt]">{uni.labels.studentName}:</div>
                 <div className="uppercase text-[11pt] tracking-wide text-black font-semibold">{data.studentName}</div>
 
@@ -201,7 +210,7 @@ const LetterPreview = forwardRef<HTMLDivElement, LetterPreviewProps>(({ data }, 
 
                 <div className="font-bold text-[#374151] text-[11pt]">{uni.labels.status}:</div>
                 <div className="flex">
-                    <span className="text-[9pt] font-bold uppercase text-[#15803d] tracking-widest bg-[#dcfce7] px-3 py-1 rounded-sm shadow-sm">
+                    <span className="text-[9pt] font-bold uppercase text-[#15803d] tracking-widest">
                         ACTIVE • FULL TIME
                     </span>
                 </div>
@@ -211,28 +220,35 @@ const LetterPreview = forwardRef<HTMLDivElement, LetterPreviewProps>(({ data }, 
             </div>
         </div>
 
-        <div className="mb-6 font-serif text-[12pt] leading-[1.8] text-justify text-gray-900">
+        {/* Details Paragraphs */}
+        <div className="mb-6 font-serif text-[12pt] leading-[1.6] text-justify text-gray-900">
              {renderTextWithBold(uni.body.details("Bachelor Degree", "Current Term"))}
         </div>
 
-        <div className="mb-8 font-serif text-[12pt] leading-[1.8] text-justify text-gray-900">
+        <div className="mb-4 font-serif text-[12pt] leading-[1.6] text-justify text-gray-900">
              {renderTextWithBold(uni.body.closing)}
         </div>
 
-        <div className="mt-auto flex justify-between items-end pb-0">
-            <div className="flex flex-col gap-3">
+        {/* Footer / Signature Area - Pushed to bottom */}
+        <div className="mt-auto pt-4 flex justify-between items-end pb-4">
+            {/* Authenticity / QR Section */}
+            <div className="flex flex-col gap-2">
                 <div className="text-[7pt] font-sans font-bold text-gray-400 uppercase tracking-widest">AUTHENTICITY VERIFICATION</div>
-                <div className="border border-black p-1 w-fit">
-                     <QrCode size={48} color="black" />
-                </div>
-                <div className="text-[6pt] font-serif text-gray-400 max-w-[150px] leading-tight mt-1">
-                    Scan to verify via the<br/>University Secure Portal.
+                <div className="flex items-center gap-3">
+                     <div className="border border-black p-1 w-fit bg-white">
+                         <QrCode size={42} color="black" />
+                     </div>
+                     <div className="text-[7pt] font-serif text-gray-500 max-w-[120px] leading-tight italic">
+                        Scan to verify via the<br/>University Secure Portal.
+                     </div>
                 </div>
             </div>
 
-            <div className="relative flex flex-col items-center w-[70mm]">
-                <div className="absolute bottom-16 right-4 w-[48mm] h-[48mm] opacity-90 pointer-events-none mix-blend-multiply z-10">
-                    <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-12 drop-shadow-md">
+            {/* Signature Section */}
+            <div className="relative flex flex-col items-center w-[75mm] mr-2">
+                {/* Stamp - Positioned overlapping text slightly */}
+                <div className="absolute bottom-10 right-0 w-[50mm] h-[50mm] opacity-90 pointer-events-none mix-blend-multiply z-10">
+                    <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-12 drop-shadow-sm">
                         <defs>
                             <path id="circlePath" d="M 100, 100 m -75, 0 a 75,75 0 1,1 150,0 a 75,75 0 1,1 -150,0" />
                         </defs>
@@ -250,19 +266,22 @@ const LetterPreview = forwardRef<HTMLDivElement, LetterPreviewProps>(({ data }, 
                     </svg>
                 </div>
 
-                <div className="h-[25mm] w-full flex justify-center items-end mb-1 z-20 relative">
+                {/* Signature Image */}
+                <div className="h-[25mm] w-full flex justify-center items-end mb-2 z-20 relative">
                      {data.signature ? (
                         <img src={data.signature} alt="Signature" className="h-full object-contain filter contrast-125" />
                     ) : (
-                        <div className="text-gray-300 italic text-[10pt] font-serif">Digitally Signed</div>
+                        <div className="text-gray-300 italic text-[11pt] font-serif font-bold">Digitally Signed</div>
                     )}
                 </div>
 
-                <div className="w-full h-[1px] bg-[#002147] mb-3"></div>
+                {/* Signature Line */}
+                <div className="w-full h-[1.5px] bg-[#002147] mb-2 z-20"></div>
 
+                {/* Signatory Name & Title */}
                 <div className="text-center w-full z-20 relative">
-                    <p className="text-[12pt] font-serif font-bold text-[#002147] leading-none mb-1">{uni.signatory.name}</p>
-                    <p className="text-[8pt] font-sans font-bold uppercase tracking-widest text-gray-500">{uni.signatory.title}</p>
+                    <p className="text-[13pt] font-serif font-bold text-[#002147] leading-none mb-1">{uni.signatory.name}</p>
+                    <p className="text-[7.5pt] font-sans font-bold uppercase tracking-widest text-gray-500">{uni.signatory.title}</p>
                 </div>
             </div>
         </div>

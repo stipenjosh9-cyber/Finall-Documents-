@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Download, Loader2, Printer, User, Globe, Landmark, ChevronDown, Check, Search, PenTool, FileText, Lock, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { Download, Loader2, Printer, User, Globe, Landmark, ChevronDown, Check, Search, PenTool, FileText, Lock, ArrowRight, ShieldCheck, Sparkles, LogOut } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -134,6 +134,7 @@ const App: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoginAnimating, setIsLoginAnimating] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   // App States
   const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -160,18 +161,37 @@ const App: React.FC = () => {
     return universities.filter(u => u.country === selectedCountry);
   }, [selectedCountry]);
 
+  // Check Local Storage for Persistence
+  useEffect(() => {
+    const storedAuth = localStorage.getItem('isLoggedIn');
+    if (storedAuth === 'true') {
+        setIsAuthenticated(true);
+    }
+    setCheckingAuth(false);
+  }, []);
+
   // Handlers
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (username === 'admin' && password === 'admin') {
         setIsLoginAnimating(true);
+        // Persist login
+        localStorage.setItem('isLoggedIn', 'true');
         setTimeout(() => {
             setIsAuthenticated(true);
+            setIsLoginAnimating(false);
         }, 800);
     } else {
         setLoginError('Invalid credentials');
         setTimeout(() => setLoginError(''), 2000);
     }
+  };
+
+  const handleLogout = () => {
+      localStorage.removeItem('isLoggedIn');
+      setIsAuthenticated(false);
+      setUsername('');
+      setPassword('');
   };
 
   const handleCountryChange = (country: string) => {
@@ -213,11 +233,15 @@ const App: React.FC = () => {
       letterRef.current.style.transform = 'none';
 
       const canvas = await html2canvas(letterRef.current, {
-        scale: 4.0, 
+        scale: 4, // High quality scale
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
         imageTimeout: 0,
+        width: 794, // A4 width at 96 DPI approx (210mm)
+        height: 1123, // A4 height at 96 DPI approx (297mm)
+        windowWidth: 794,
+        windowHeight: 1123,
       });
 
       letterRef.current.style.transform = originalTransform;
@@ -242,8 +266,9 @@ const App: React.FC = () => {
       if (previewContainerRef.current) {
         const containerHeight = previewContainerRef.current.clientHeight;
         const targetHeight = 1123; 
-        const newScale = (containerHeight / targetHeight) * 0.95;
-        setScale(Math.min(newScale, 1.1)); 
+        // Calculate scale to fit nicely
+        const newScale = (containerHeight / targetHeight) * 0.9;
+        setScale(Math.min(newScale, 0.95)); 
       }
     };
     window.addEventListener('resize', updateScale);
@@ -252,10 +277,12 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', updateScale);
   }, [letterData, isAuthenticated]);
 
+  if (checkingAuth) return null; // Prevent flickering
+
   // --- LOGIN SCREEN ---
   if (!isAuthenticated) {
     return (
-        <div className={`min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden relative ${isLoginAnimating ? 'animate-out fade-out duration-700 zoom-out-110' : ''}`}>
+        <div className={`min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden relative ${isLoginAnimating ? 'animate-out fade-out duration-1000 zoom-out-110' : ''}`}>
              
              {/* Background Animation */}
              <div className="absolute inset-0 z-0">
@@ -263,10 +290,10 @@ const App: React.FC = () => {
                  <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
              </div>
 
-             <div className="w-full max-w-md relative z-10">
+             <div className={`w-full max-w-md relative z-10 transition-all duration-700 ${isLoginAnimating ? 'opacity-0 scale-95 blur-sm' : 'opacity-100 scale-100'}`}>
                  <div className="bg-white/10 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)]">
                      <div className="text-center mb-8">
-                         <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-blue-500/50 mb-4">
+                         <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-blue-500/50 mb-4 ring-2 ring-blue-400/20">
                              <ShieldCheck className="text-white" size={32} />
                          </div>
                          <h1 className="text-3xl font-bold text-white tracking-tight">UniGlobal<span className="text-blue-500">.Doc</span></h1>
@@ -303,7 +330,7 @@ const App: React.FC = () => {
 
                          {loginError && <p className="text-red-500 text-xs text-center font-bold animate-pulse">{loginError}</p>}
 
-                         <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 group">
+                         <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 group">
                              <span>Access Portal</span>
                              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                          </button>
@@ -320,12 +347,11 @@ const App: React.FC = () => {
 
   // --- MAIN APP ---
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans selection:bg-gray-200 selection:text-gray-900 overflow-hidden flex flex-col relative text-gray-800 animate-in fade-in slide-in-from-bottom-10 duration-1000 ease-out">
+    <div className="min-h-screen bg-[#f8fafc] font-sans selection:bg-gray-200 selection:text-gray-900 overflow-hidden flex flex-col relative text-gray-800 animate-in fade-in zoom-in-95 duration-700 ease-out">
       
       {/* LOADING OVERLAY */}
       {generatingPdf && (
           <div className="fixed inset-0 z-50 bg-[#000510]/95 backdrop-blur-3xl flex items-center justify-center flex-col animate-in fade-in duration-500">
-             {/* ... same luxury loader code ... */}
              <div className="absolute inset-0 overflow-hidden pointer-events-none">
                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent animate-[shimmer_2s_infinite]"></div>
                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[100px] animate-pulse"></div>
@@ -355,7 +381,7 @@ const App: React.FC = () => {
       <header className="relative z-20 bg-white border-b border-gray-200 sticky top-0 shadow-sm">
         <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 h-20 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="bg-gray-900 text-white p-3 rounded-xl shadow-lg shadow-gray-200/50 ring-1 ring-gray-900/5">
+            <div className="bg-gray-900 text-white p-3 rounded-xl shadow-lg shadow-gray-200/50 ring-1 ring-gray-900/5 transition-transform hover:scale-105 cursor-pointer">
               <Printer size={24} />
             </div>
             <div>
@@ -371,6 +397,9 @@ const App: React.FC = () => {
              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-bold">
                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> SYSTEM ACTIVE
              </div>
+             <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Logout">
+                 <LogOut size={20} />
+             </button>
           </div>
         </div>
       </header>
@@ -431,7 +460,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <button onClick={() => generatePDF(true)} disabled={generatingPdf} className="w-full py-4 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 shadow-xl shadow-gray-200 hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2 group overflow-hidden relative">
+                <button onClick={() => generatePDF(true)} disabled={generatingPdf} className="w-full py-4 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 shadow-xl shadow-gray-200 hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2 group overflow-hidden relative active:scale-95">
                     <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                     {generatingPdf ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} className="group-hover:scale-110 transition-transform"/>}
                     <span className="relative z-10">Download Official PDF</span>
@@ -448,7 +477,8 @@ const App: React.FC = () => {
               <span className="bg-gray-900/90 backdrop-blur text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 border border-white/10"><Landmark size={10} />{universities.find(u => u.id === letterData.universityId)?.country.toUpperCase() || 'OFFICIAL'}</span>
             </div>
             
-            <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center', width: '210mm' }} className="transition-transform duration-500 py-10 ease-out">
+            {/* Scale Container */}
+            <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center', width: '210mm' }} className="transition-transform duration-500 ease-out py-8">
                 <div className="relative shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] transition-shadow duration-300">
                     <LetterPreview ref={letterRef} data={letterData} />
                 </div>
