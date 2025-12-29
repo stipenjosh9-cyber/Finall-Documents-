@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Download, Loader2, Printer, User, Globe, Landmark, ChevronDown, Check, Search, PenTool, FileText, Lock, ArrowRight, ShieldCheck, Sparkles, LogOut } from 'lucide-react';
+import { Download, Loader2, Printer, User, Globe, Landmark, ChevronDown, Check, Search, PenTool, FileText, Lock, ArrowRight, ShieldCheck, Sparkles, LogOut, Eye } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -7,6 +7,7 @@ import { LetterData } from './types';
 import { universities } from './data/universities';
 import SignaturePad, { SignaturePadHandle } from './components/SignaturePad';
 import LetterPreview from './components/LetterPreview';
+import PrintPreviewModal from './components/PrintPreviewModal';
 
 // --- CUSTOM ANIMATED DROPDOWN COMPONENT WITH SEARCH ---
 interface Option {
@@ -140,6 +141,13 @@ const App: React.FC = () => {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   
+  // Print Preview States
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [generatingPreview, setGeneratingPreview] = useState(false);
+  const [currentFileName, setCurrentFileName] = useState('');
+  const [pendingPdfData, setPendingPdfData] = useState<{ imgData: string; pdf: jsPDF } | null>(null);
+  
   // Data States
   const countries = useMemo(() => Array.from(new Set(universities.map(u => u.country))).sort(), []);
   const [selectedCountry, setSelectedCountry] = useState('Indonesia');
@@ -209,6 +217,94 @@ const App: React.FC = () => {
             date: new Date().toLocaleDateString(uni.locale, { day: 'numeric', month: 'long', year: 'numeric' })
         }));
     }
+  };
+
+  // Generate preview for print preview modal
+  const openPrintPreview = async () => {
+    if (!letterRef.current) return;
+    setGeneratingPreview(true);
+    setShowPrintPreview(true);
+    
+    try {
+      const originalTransform = letterRef.current.style.transform;
+      letterRef.current.style.transform = 'none';
+
+      const canvas = await html2canvas(letterRef.current, {
+        scale: 4,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        imageTimeout: 0,
+        width: 794,
+        height: 1123,
+        windowWidth: 794,
+        windowHeight: 1123,
+      });
+
+      letterRef.current.style.transform = originalTransform;
+      
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      setPreviewImage(imgData);
+      
+      // Prepare PDF for download
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      
+      const uniName = universities.find(u => u.id === letterData.universityId)?.name || "Oxford";
+      const fileName = `${uniName}_Enrollment_${letterData.studentName.replace(/\s+/g, '_')}.pdf`;
+      setCurrentFileName(fileName);
+      setPendingPdfData({ imgData, pdf });
+      
+    } catch (err) {
+      alert("Error generating preview.");
+      setShowPrintPreview(false);
+    }
+    finally { setGeneratingPreview(false); }
+  };
+
+  // Handle download from print preview modal
+  const handlePreviewDownload = () => {
+    if (pendingPdfData) {
+      pendingPdfData.pdf.save(currentFileName);
+      setShowPrintPreview(false);
+      setPreviewImage(null);
+      setPendingPdfData(null);
+    }
+  };
+
+  // Handle print from print preview modal
+  const handlePreviewPrint = () => {
+    if (previewImage) {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Print Document</title>
+              <style>
+                @page { size: A4; margin: 0; }
+                body { margin: 0; padding: 0; }
+                img { width: 100%; height: auto; }
+              </style>
+            </head>
+            <body>
+              <img src="${previewImage}" onload="window.print(); window.close();" />
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      }
+    }
+  };
+
+  // Close print preview modal
+  const closePrintPreview = () => {
+    setShowPrintPreview(false);
+    setPreviewImage(null);
+    setPendingPdfData(null);
   };
 
   const generatePDF = async (download = false) => {
@@ -460,10 +556,10 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <button onClick={() => generatePDF(true)} disabled={generatingPdf} className="w-full py-4 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 shadow-xl shadow-gray-200 hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2 group overflow-hidden relative active:scale-95">
+                <button onClick={openPrintPreview} disabled={generatingPreview || generatingPdf} className="w-full py-4 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 shadow-xl shadow-gray-200 hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2 group overflow-hidden relative active:scale-95">
                     <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                    {generatingPdf ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} className="group-hover:scale-110 transition-transform"/>}
-                    <span className="relative z-10">Download Official PDF</span>
+                    {generatingPreview ? <Loader2 size={18} className="animate-spin" /> : <Eye size={18} className="group-hover:scale-110 transition-transform"/>}
+                    <span className="relative z-10">Preview & Download PDF</span>
                 </button>
             </div>
           </div>
@@ -487,6 +583,17 @@ const App: React.FC = () => {
             <div className="absolute bottom-6 left-6 text-[10px] font-mono text-gray-300 bg-black/60 backdrop-blur px-3 py-1.5 rounded-full border border-white/10 opacity-50 group-hover:opacity-100 transition-opacity">View: {Math.round(scale * 100)}% | Print-Ready A4</div>
           </div>
       </main>
+
+      {/* Print Preview Modal */}
+      <PrintPreviewModal
+        isOpen={showPrintPreview}
+        onClose={closePrintPreview}
+        onDownload={handlePreviewDownload}
+        onPrint={handlePreviewPrint}
+        previewImage={previewImage}
+        fileName={currentFileName}
+        isGenerating={generatingPreview}
+      />
     </div>
   );
 };
